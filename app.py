@@ -1,39 +1,31 @@
-from flask import Flask, request, render_template_string, redirect, url_for
-import os
+from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
-app.secret_key = "not_secret"
 
-# Simple index
-@app.route('/')
+# Make it EASY: flag is in config (no filesystem gymnastics)
+app.config["FLAG"] = "tarumtFLAG{i_love_pineapple}"
+
+@app.route("/")
 def index():
     return """
-    <h1>Welcome to Template Trouble</h1>
-    <p>Try the <a href="/search">search</a>.</p>
+    <h1>Template Trouble — Easy</h1>
+    <p>Try the <a href="/search">search</a>. Tip: Does <code>{{7*7}}</code> evaluate?</p>
     """
 
-# Vulnerable search (SSTI)
-@app.route('/search')
+@app.route("/search")
 def search():
-    q = request.args.get('q', '')
-    # WARNING: intentionally vulnerable to SSTI for the challenge
+    q = request.args.get("q", "")
+    # Intentionally vulnerable: user input becomes template SOURCE
     template = """
     <h2>Search results for: {{q}}</h2>
-    <p>We did a deep search... (not really)</p>
     <form action="/search" method="get">
       <input name="q" placeholder="search..." value="{{q}}">
       <button type="submit">Search</button>
     </form>
+    <p>Hint: Sometimes configs hold secrets.</p>
     """
-    # render_template_string uses Jinja2; passing `q` but also allowing template injection
-    # By putting user input into the template context, the app is vulnerable.
+    # SUPER VULN: directly splicing user input into the template text
     return render_template_string(template.replace("{{q}}", q), q=q)
 
-# small admin page to make things look real (not linked)
-@app.route('/admin')
-def admin():
-    return "<h1>Admin panel</h1><p>Only admins can see flags. (Not for players)</p>"
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
